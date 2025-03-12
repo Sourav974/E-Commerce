@@ -1,19 +1,73 @@
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Link, useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "@/hooks/redux";
+import { setUser, setError, setLoading } from "@/features/auth/authSlice";
+import { useState, useEffect, ChangeEvent } from "react";
+import { LoginData } from "@/types";
+import axios from "axios";
+import { Loader2 } from "lucide-react";
+import { RootState } from "@/store/store.types";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [input, setInput] = useState<LoginData>({
+    username: "",
+    password: "",
+  });
+  const { user, loading } = useAppSelector((state: RootState) => state.auth);
+
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
+  function onChangeHandler(e: ChangeEvent<HTMLInputElement>): void {
+    const { name, value } = e.target;
+    setInput((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent the default form submission behavior
+
+    try {
+      dispatch(setLoading(true));
+      const response = await axios.post(
+        "https://dummyjson.com/auth/login",
+        input
+      );
+
+      if (response.data) {
+        dispatch(setUser(response.data));
+        navigate("/");
+      }
+      console.log(response.data);
+    } catch (err) {
+      dispatch(setError(err));
+      console.log(err);
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  });
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -24,7 +78,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={onSubmit}>
             <div className="grid gap-6">
               <div className="flex flex-col gap-4">
                 <Button variant="outline" className="w-full">
@@ -53,11 +107,12 @@ export function LoginForm({
               </div>
               <div className="grid gap-6">
                 <div className="grid gap-3">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Username</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="m@example.com"
+                    name="username"
+                    type="text"
+                    placeholder="your username"
+                    onChange={onChangeHandler}
                     required
                   />
                 </div>
@@ -71,17 +126,30 @@ export function LoginForm({
                       Forgot your password?
                     </a>
                   </div>
-                  <Input id="password" type="password" required />
+                  <Input
+                    name="password"
+                    type="password"
+                    onChange={onChangeHandler}
+                    required
+                  />
                 </div>
-                <Button type="submit" className="w-full">
-                  Login
-                </Button>
+                {loading ? (
+                  <Button disabled className="w-full">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin justify-center" />
+                    Please wait
+                  </Button>
+                ) : (
+                  <Button type="submit" className="w-full">
+                    Login
+                  </Button>
+                )}
               </div>
+
               <div className="text-center text-sm">
                 Don&apos;t have an account?{" "}
-                <a href="#" className="underline underline-offset-4">
+                <Link to="/signup" className="underline underline-offset-4">
                   Sign up
-                </a>
+                </Link>
               </div>
             </div>
           </form>
@@ -92,5 +160,5 @@ export function LoginForm({
         and <a href="#">Privacy Policy</a>.
       </div>
     </div>
-  )
+  );
 }
